@@ -1,6 +1,3 @@
 <nav>
-  <view name="home"/>
-  <view name="stats"/>
-  <view name="logs"/>
-  <view name="tips"/>
+  <view name="preview_da_coleta_html"/>
 </nav>

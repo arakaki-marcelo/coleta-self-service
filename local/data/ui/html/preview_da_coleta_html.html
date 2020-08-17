@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>TypeGen</title>
+    <link rel="shortcut icon" href="/en-US/static/@D21EA72DFE037800C90F6373890F1C1AB1F618F8582CAA3E496891450AC521FF/img/favicon.ico" />
+    <link rel="stylesheet" type="text/css" href="{{SPLUNKWEB_URL_PREFIX}}/static/build/css/bootstrap-enterprise.css" />
+    <link rel="stylesheet" type="text/css" href="{{SPLUNKWEB_URL_PREFIX}}/static/build/css/splunkjs-dashboard.css" />
+
+    <style>
+        #loading {
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            position: fixed;
+            display: block;
+            opacity: 0.7;
+            background-color: #fff;
+            z-index: 99;
+            text-align: center;
+        }
+
+        #loading-image {
+            position: absolute;
+            top: 100px;
+            left: 240px;
+            z-index: 100;
+        }
+    </style>
+
+        <meta name="referrer" content="never" />
+        <meta name="referrer" content="no-referrer" />
+    
+        <script>
+            (function () {
+                window._splunk_metrics_events = [];
+                window._splunk_metrics_events.active = true;
+
+                function onLoadSwa() {
+                    new SWA({"deploymentID": "04cabf88-8e73-58f5-8039-9f86b3ff248e", "userID": "e424a1e07ff78a7649b6af5661110e4220a316104b2f50d50ca0d57b922e967d", "version": "4", "instanceGUID": "03739038-3E1A-4753-A8FB-1A8501E9C150", "visibility": "anonymous,support", "url": "https://e1345286.api.splkmobile.com/1.0/e1345286"});
+                };
+
+                document.addEventListener("DOMContentLoaded", function(event) {
+                    var s = document.createElement('script');
+                    s.type = 'text/javascript';
+                    s.async = true;
+                    s.src = '/en-US/static/app/splunk_instrumentation/build/pages/swa.js';
+                    s.addEventListener('load', onLoadSwa);
+                    var x = document.getElementsByTagName('script')[0];
+                    x.parentNode.insertBefore(s, x);
+                });
+            }());
+        </script>
+    </head>
+<body class="simplexml preload locale-en" data-splunk-version="8.0.2.1" data-splunk-product="splunk">
+    <div id="loading">
+        <img id="loading-image" src="images/ajax-loader.gif" alt="Loading..." />
+      </div>    
+<!--
+BEGIN LAYOUT
+This section contains the layout for the dashboard. Splunk uses proprietary
+styles in <div> tags, similar to Bootstrap's grid system.
+-->
+<header>
+    <a aria-label="Screen reader users, click here to skip the navigation bar" class="navSkip" href="#navSkip" tabIndex="1">Skip Navigation &gt;</a>
+    <div class="header splunk-header">
+            <div id="placeholder-splunk-bar">
+                <a href="{{SPLUNKWEB_URL_PREFIX}}/app/launcher/home" class="brand" title="splunk &gt; listen to your data">splunk<strong>&gt;</strong></a>
+            </div>
+                <div id="placeholder-app-bar"></div>
+    </div>
+    <a id="navSkip"></a>
+</header>
+<div class="dashboard-body container-fluid main-section-body" data-role="main">
+    <div class="dashboard-header clearfix">
+        <h2>Splunk TypeGen</h2>
+        <h3>A quem se destina?</h3>
+        <p>Essa página é feita para ajudar quem tem seu projeto na cloud privada e quer utilizar a r3 da receita do splunk forwarder. Com ela, você pode gerar o inputs e o props para colocar na receita da sua aplicação ;)</p>
+    </div>
+    <div class="fieldset">
+        <div class="input input-text" id="txtPath">
+            <label>path</label>
+        </div>
+        <p><b>Atenção!</b> Nunca coloque o splunk para coletar um diretório inteiro. Caso existam muitos arquivos, podem ocorrer problemas com a sua indexação.</p>
+        <br/>
+        <div class="input input-text" id="txtSigla">
+            <label>sigla</label>
+        </div>
+        <p>O index gerado no Inputs será raw_{sigla}. Por favor, assegure-se de que o index existe antes de qualquer coisa.</p>
+        <br/>
+        <div class="input input-text" id="txtLog">
+            <label>log</label>
+        </div>
+        <p>Coloque aqui de 3 a 5 eventos do seu log para que o app tente buscar na base de sourcetypes algum compatível.</p>
+        <br/>
+        <div class="form-submit" id="search_btn">
+            <button class="btn btn-primary submit" id="btnSearch">Submit</button>
+        </div>
+    </div>
+
+
+</div>
+
+<!--
+END LAYOUT
+-->
+
+<script src="{{SPLUNKWEB_URL_PREFIX}}/config?autoload=1" crossorigin="use-credentials"></script>
+<script src="{{SPLUNKWEB_URL_PREFIX}}/static/js/i18n.js"></script>
+<script src="{{SPLUNKWEB_URL_PREFIX}}/i18ncatalog?autoload=1"></script>
+<script src="{{SPLUNKWEB_URL_PREFIX}}/static/build/simplexml/index.js"></script>
+<script type="text/javascript">
+// <![CDATA[
+// <![CDATA[
+//
+// LIBRARY REQUIREMENTS
+//
+// In the require function, we include the necessary libraries and modules for
+// the HTML dashboard. Then, we pass variable names for these libraries and
+// modules as function parameters, in order.
+//
+// When you add libraries or modules, remember to retain this mapping order
+// between the library or module and its function parameter. You can do this by
+// adding to the end of these lists, as shown in the commented examples below.
+
+require([
+    "splunkjs/mvc",
+    "splunkjs/mvc/utils",
+    "splunkjs/mvc/tokenutils",
+    "underscore",
+    "jquery",
+    "splunkjs/mvc/simplexml",
+    "splunkjs/mvc/layoutview",
+    "splunkjs/mvc/simplexml/dashboardview",
+    "splunkjs/mvc/simplexml/dashboard/panelref",
+    "splunkjs/mvc/simplexml/element/chart",
+    "splunkjs/mvc/simplexml/element/event",
+    "splunkjs/mvc/simplexml/element/html",
+    "splunkjs/mvc/simplexml/element/list",
+    "splunkjs/mvc/simplexml/element/map",
+    "splunkjs/mvc/simplexml/element/single",
+    "splunkjs/mvc/simplexml/element/table",
+    "splunkjs/mvc/simplexml/element/visualization",
+    "splunkjs/mvc/simpleform/formutils",
+    "splunkjs/mvc/simplexml/eventhandler",
+    "splunkjs/mvc/simplexml/searcheventhandler",
+    "splunkjs/mvc/simpleform/input/dropdown",
+    "splunkjs/mvc/simpleform/input/radiogroup",
+    "splunkjs/mvc/simpleform/input/linklist",
+    "splunkjs/mvc/simpleform/input/multiselect",
+    "splunkjs/mvc/simpleform/input/checkboxgroup",
+    "splunkjs/mvc/simpleform/input/text",
+    "splunkjs/mvc/simpleform/input/timerange",
+    "splunkjs/mvc/simpleform/input/submit",
+    "splunkjs/mvc/searchmanager",
+    "splunkjs/mvc/savedsearchmanager",
+    "splunkjs/mvc/postprocessmanager",
+    "splunkjs/mvc/simplexml/urltokenmodel"
+    // Add comma-separated libraries and modules manually here, for example:
+    // ..."splunkjs/mvc/simplexml/urltokenmodel",
+    // "splunkjs/mvc/tokenforwarder"
+    ],
+    function(
+        mvc,
+        utils,
+        TokenUtils,
+        _,
+        $,
+        DashboardController,
+        LayoutView,
+        Dashboard,
+        PanelRef,
+        ChartElement,
+        EventElement,
+        HtmlElement,
+        ListElement,
+        MapElement,
+        SingleElement,
+        TableElement,
+        VisualizationElement,
+        FormUtils,
+        EventHandler,
+        SearchEventHandler,
+        DropdownInput,
+        RadioGroupInput,
+        LinkListInput,
+        MultiSelectInput,
+        CheckboxGroupInput,
+        TextInput,
+        TimeRangeInput,
+        SubmitButton,
+        SearchManager,
+        SavedSearchManager,
+        PostProcessManager,
+        UrlTokenModel
+
+        // Add comma-separated parameter names here, for example:
+        // ...UrlTokenModel,
+        // TokenForwarder
+        ) {
+
+        var pageLoading = true;
+
+
+        //
+        // TOKENS
+        //
+
+        // Create token namespaces
+        var urlTokenModel = new UrlTokenModel();
+        mvc.Components.registerInstance('url', urlTokenModel);
+        var defaultTokenModel = mvc.Components.getInstance('default', {create: true});
+        var submittedTokenModel = mvc.Components.getInstance('submitted', {create: true});
+
+        urlTokenModel.on('url:navigate', function() {
+            defaultTokenModel.set(urlTokenModel.toJSON());
+            if (!_.isEmpty(urlTokenModel.toJSON()) && !_.all(urlTokenModel.toJSON(), _.isUndefined)) {
+                submitTokens();
+            } else {
+                submittedTokenModel.clear();
+            }
+        });
+
+        // Initialize tokens
+        defaultTokenModel.set(urlTokenModel.toJSON());
+
+        function submitTokens() {
+            // Copy the contents of the defaultTokenModel to the submittedTokenModel and urlTokenModel
+            FormUtils.submitForm({ replaceState: pageLoading });
+        }
+
+        function setToken(name, value) {
+            defaultTokenModel.set(name, value);
+            submittedTokenModel.set(name, value);
+        }
+
+        function unsetToken(name) {
+            defaultTokenModel.unset(name);
+            submittedTokenModel.unset(name);
+        }
+
+
+
+        //
+        // SEARCH MANAGERS
+        //
+
+
+
+        //
+        // SPLUNK LAYOUT
+        //
+
+        $('header').remove();
+        new LayoutView({"hideChrome": false, "hideSplunkBar": false, "hideAppBar": false})
+            .render()
+            .getContainerElement()
+            .appendChild($('.dashboard-body')[0]);
+
+        //
+        // DASHBOARD EDITOR
+        //
+
+        new Dashboard({
+            id: 'dashboard',
+            el: $('.dashboard-body'),
+            showTitle: true,
+            editable: true
+        }, {tokens: true}).render();
+
+
+        //
+        // VIEWS: VISUALIZATION ELEMENTS
+        //
+
+
+        //
+        // VIEWS: FORM INPUTS
+        //
+
+        var txtPath = new TextInput({
+            "id": "txtPath",
+            "value": "$form.path$",
+            "el": $('#txtPath')
+        }, {tokens: true}).render();
+
+        txtPath.on("change", function(newValue) {
+            FormUtils.handleValueChange(txtPath);
+        });
+        txtPath.value = '/opt/apl/teste/teste.log';
+        
+        var txtSigla = new TextInput({
+            "id": "txtSigla",
+            "value": "$form.sigla$",
+            "el": $('#txtSigla')
+        }, {tokens: true}).render();
+
+        txtSigla.on("change", function(newValue) {
+            FormUtils.handleValueChange(txtSigla);
+        });
+        txtSigla.value = 'aa4';
+        
+        var txtLog = new TextInput({
+            "id": "txtLog",
+            "value": "$form.log$",
+            "el": $('#txtLog')
+        }, {tokens: true}).render();
+
+        txtLog.on("change", function(newValue) {
+            FormUtils.handleValueChange(txtLog);
+        });
+        txtLog.value = '{"type":"INFO","text":"1367872459.2"}';
+
+        //
+        // SUBMIT FORM DATA
+        //
+
+        var submit = new SubmitButton({
+            id: 'submit',
+            el: $('#search_btn')
+        }, {tokens: true}).render();
+
+        submit.on("submit", function() {
+            submitTokens();
+        });
+
+        // Initialize time tokens to default
+        if (!defaultTokenModel.has('earliest') && !defaultTokenModel.has('latest')) {
+            defaultTokenModel.set({ earliest: '0', latest: '' });
+        }
+
+        if (!_.isEmpty(urlTokenModel.toJSON())){
+            submitTokens();
+        }
+
+
+        //
+        // DASHBOARD READY
+        //
+
+        DashboardController.ready();
+        pageLoading = false;
+
+        //
+        // CODE CONTROL FOR THE PAGE
+        //
+        $( document ).ready(function() {
+            $('#btnSearch').click(function() {
+                hit_endpoint();
+            });
+        });      
+
+        function hit_endpoint() {
+            var logValue = document.getElementById('txtLog').value;
+            var payload = {"log": logValue}
+
+            console.log('1: ' + document.getElementById('txtLog').value);
+            console.log('2: ' + document.getElementById('txtLog').innerHTML);
+            console.log('3: ' + document.getElementById('txtLog').innerText);
+			console.log(payload)
+
+            $.ajax({
+                url: "http://localhost:8000/en-GB/splunkd/__raw/services/coleta_self_service/v1/typegen",
+                type: "GET",
+                crossDomain:true,
+                data: payload,
+                contentType: "application/json",
+                success: function (response){
+                    console.log(response);
+                }
+            });
+        };  
+
+        $(window).load(function() {
+            $('#loading').hide();
+        });              
+    }
+);
+// ]]>
+</script>
+</body>
+</html>

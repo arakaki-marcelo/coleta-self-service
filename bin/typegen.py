@@ -1,110 +1,64 @@
-import re, sys, logging, traceback, tempfile, os, json, datetime, time, math
+import re, sys, logging, traceback, tempfile, os, json, datetime, time, math, os
 import cherrypy
 import splunk.appserver.mrsparkle as mrsparkle
-import splunk.appserver.mrsparkle.controllers as controllers
-from splunk.appserver.mrsparkle.lib.decorators import expose_page
-from splunk.appserver.mrsparkle.lib.routes import route
 from splunk.appserver.mrsparkle.lib import util
 import splunk.util
 import splunk.bundle as bundle
 import splunk.search as se
 import splunk.entity as entity
 import splunk.rest as rest
+from splunk.persistconn.application import PersistentServerConnectionApplication
 
-logger = logging.getLogger('preview')
+if sys.platform == "win32":
+    import msvcrt
+    # Binary mode is required for persistent mode on Windows.
+    msvcrt.setmode(sys.stdin.fileno(), os.O_BINARY)
+    msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
+    msvcrt.setmode(sys.stderr.fileno(), os.O_BINARY)
 
-# stop analyzing after we have N good different parses
 MAX_PARSE_BEFORE_GIVE_UP = 10   # if we have 10 different linebreaking/timestamps, stop deduping
-MAX_POP_STANZAS = 1000             # keep 50 most popular stanzas
+MAX_POP_STANZAS = 1000          # keep 50 most popular stanzas
 MAX_SECS_BEFORE_NO_DEDUP = 10   # if previewing any given sourcetype takes more than 10 seconds, stop trying to dedup sourcetypes
-MAX_SECS_FOR_DEDUP = 60   # if previewing takes more than 10 seconds, stop trying to dedup sourcetypes
+MAX_SECS_FOR_DEDUP = 60         # if previewing takes more than 10 seconds, stop trying to dedup sourcetypes
 MAX_DATA_LEN = 1000             # work on up to 1k of text
 
-class PreviewController(controllers.BaseController):
-    '''/preview'''
+class TypeGenHandler(PersistentServerConnectionApplication):
+    def __init__(self, command_line, command_arg):
+        PersistentServerConnectionApplication.__init__(self)    
 
-    @route('/')
-    @expose_page(must_login=True, methods=['GET', 'POST'])
-    def index(self, **kwargs):
+    def handle(self, **kwargs):
+        namespace  = kwargs.get('namespace',None)
+        username = cherrypy.session['user']['name']
 
-        try:
-            
-            cherrypy.response.headers['content-type'] = mrsparkle.MIME_HTML
-            self._targs = { 'messages': {'error':[], 'warn':[], 'info':[] },
-                            'events': [],
-                            'stanzas': [],
-                            'stanza': '',
-                            'data': '',
-                            'settings': ''
-                            }
+        self._sessionKey = sessionKey
+        self._mynamespace = namespace
+        self._owner = username
 
-            sessionKey = kwargs['sessionKey'] = cherrypy.session['sessionKey']
+        events = self.preview_log()
+        return json.dumps(events)
 
-            if not splunk.auth.ping(sessionKey=sessionKey):
-                return self.redirect_to_url('/account/login', _qs=[ ('return_to', util.current_url_path())])
+        #return {'payload': in_string,  # Payload of the request.
+        #        'status': 200          # HTTP status code
+        #}    
 
-            namespace  = kwargs.get('namespace',None)
-            username = cherrypy.session['user']['name']
-
-            self._sessionKey = sessionKey
-            self._mynamespace = namespace
-            self._owner = username
-
-            self.previewPage(**kwargs)
-        except Exception, e:
-            return self.outputError('Exception: %s.' % e)
-        
-        page = "preview"
-        cherrypy.response.headers['content-type'] = mrsparkle.MIME_HTML
-        return self.render_template('coleta_self_service:/local/data/ui/%s.html' % page, self._targs)
-
-    def outputError(self, msg):
-        self.addMsg('error', msg)
-        return self.render_template('preview:/templates/preview/error.html', self._targs)
-
-    def addMsg(self, level, text):
-        #print "%s: %s" % (level, text)
-        self._targs['messages'][level].append(str(text))
-        if level == 'error':
-            self.addMsg('warn', 'Stacktrace: %s' % traceback.format_exc())
-
-
-
-    def previewPage(self, **kwargs):
-
-        old_data = kwargs.get('old_data', None)
-        old_stanza_name_count = kwargs.get('old_stanzas', None)
-
-        stanza = kwargs.get('stanza', None)
-        data     = kwargs.get('data', '').strip()[:MAX_DATA_LEN] # take a sample
-
+    def preview_log(self,**kwargs):
         stanza_name_count = []
         events   = []
         stanzas = {}
 
-        if len(data) == 0:
-            self.addMsg('warn', 'Please copy and paste some data.')
-        else:
-            stanza = kwargs.get('stanza', None)
-            stanzas = self.getStanzas()
-            # IF THE USER DIDN'T CHANGE THE DATA SINCE THE LAST RUN,
-            # USE THE CACHED LIST OF SOURCETYPES
-            if old_data == data:
-                if old_stanza_name_count:
-                    stanza_name_count = json.loads(old_stanza_name_count)
+        stanza = kwargs.get('stanza', None)
+        stanzas = self.getStanzas()
 
-            if len(stanza_name_count) == 0:
+        if len(stanza_name_count) == 0:
+            stanzas = self.filterStanzas(stanzas, data)            
 
+            self.keepPopular(stanzas)
 
-                stanzas = self.filterStanzas(stanzas, data)            
+            self.dedupStanzas(stanzas, data)
+            items = stanzas.items()
 
-                self.keepPopular(stanzas)
-
-                self.dedupStanzas(stanzas, data)
-                items = stanzas.items()
-
-                items.sort(key=lambda x: int(x[1]['count']), reverse=True)
-                stanza_name_count = [(name, vals['count']) for name,vals in items]
+            items.sort(key=lambda x: int(x[1]['count']), reverse=True)
+            stanza_name_count = [(name, vals['count']) for name,vals in items]        
 
             # if no stanza picked, pick the most popular (first)
             if stanza == '' or stanza == None or stanza not in stanzas.keys(): 
@@ -113,16 +67,10 @@ class PreviewController(controllers.BaseController):
             #self.addMsg('info', 'Settings for %s: %s' % (stanza, stanzas.get(stanza, {})))
             try:
                 events = self.getPreviewEvents(data, stanza, stanzas.get(stanza, {}))
+                return events
             except Exception, e:
                 logger.error('Preview App: Problem deduping %s: %s\n %s' % (name, e, traceback.format_exc()))
-                self.addMsg('warn', 'Problem getting preview: %s' % e)
-            
-
-        self._targs['events'] = events
-        self._targs['stanzas'] = stanza_name_count
-        self._targs['stanza'] = stanza
-        self._targs['data'] = data
-        self._targs['settings'] = stanzas.get(stanza,{})
+                self.addMsg('warn', 'Problem getting preview: %s' % e)            
 
     def getStanzas(self):
         # get stanzas
@@ -134,46 +82,7 @@ class PreviewController(controllers.BaseController):
             for a,v in stanzas[name].items():
                 d[a] = v
             dictstanzas[name] = d
-        return dictstanzas
-
-
-    def OLDgetPreviewEvents(self, eventdata, stanza):
-        ### !!! TEMP!  just return an event on each line
-        if eventdata == None:
-            return []
-        return [event for event in eventdata.split('\n')]
-
-
-##    def fixStrptime(self, s):
-##        best_replacements = [ 
-##            (['%T'], '%H : %M : %S'),
-##            (['%e'], '%d'),
-##            (['%n'], '%t'),
-##            (['%P'], '%p'),
-##            (['%D'], '%m / %d / %y'),
-##            (['%6N', '%3N', '%N', '%6Q', '%3Q', '%Q', '%q'], '%f'),
-##            (['%r'], '%I : %M : %S %p'),
-##            (['%t', '%n'], ' '), # these suck.  no python directive for whitespace
-##            (['%z', '%::z', '%:::z'], '%Z')
-##            ]
-##        for patterns, replacement in best_replacements:
-##            for pattern in patterns:
-##                s = s.replace(pattern, replacement)
-##        return s
-
-    def keepPopular(self, stanzas):
-        # remove any stanzas that aren't the top N most popular
-        popular_names = self.popularStanzaNames(stanzas)[:MAX_POP_STANZAS]
-        for name in stanzas.keys():
-            if name not in popular_names:
-                del stanzas[name]
-
-    def popularStanzaNames(self, stanzas):
-        items = stanzas.items()
-        items.sort(key=lambda x: int(x[1]['count']), reverse=True)
-        names = [name for name,vals in items]
-        return names
-
+        return dictstanzas    
 
     def filterStanzas(self, stanzas, data):
         doomed = set()
@@ -231,6 +140,18 @@ class PreviewController(controllers.BaseController):
             #stanzas['ZZZZZZZ' + d] = {}
         return stanzas
 
+    def keepPopular(self, stanzas):
+        # remove any stanzas that aren't the top N most popular
+        popular_names = self.popularStanzaNames(stanzas)[:MAX_POP_STANZAS]
+        for name in stanzas.keys():
+            if name not in popular_names:
+                del stanzas[name]
+
+    def popularStanzaNames(self, stanzas):
+        items = stanzas.items()
+        items.sort(key=lambda x: int(x[1]['count']), reverse=True)
+        names = [name for name,vals in items]
+        return names
 
     def dedupStanzas(self, stanzas, eventdata):
 
@@ -297,17 +218,21 @@ class PreviewController(controllers.BaseController):
                 if parseID in seenParses:
                     stanzas[name]['count'] = -1
                     #del stanzas[name]
-                    print "DELETED DUP PARSE:", name, parseID
+                    print("DELETED DUP PARSE:", name, parseID)
                 else:
-                    print "NEW GOOD PARSE:", name, parseID
+                    print("NEW GOOD PARSE:", name, parseID)
                 seenParses.add(parseID)
             except Exception, e:
                 logger.error('Preview App: Problem deduping %s: %s\n %s' % (name, e, traceback.format_exc()))
                 hadErrors = str(e)
         if hadErrors != None:
-            self.addMsg('warn', 'Problem deduping some settings (e.g., "%s").  Carrying on.' % hadErrors)
+            self.addMsg('warn', 'Problem deduping some settings (e.g., "%s").  Carrying on.' % hadErrors)  
 
-
+    def addMsg(self, level, text):
+        #print "%s: %s" % (level, text)
+        self._targs['messages'][level].append(str(text))
+        if level == 'error':
+            self.addMsg('warn', 'Stacktrace: %s' % traceback.format_exc())                      
 
     def getPreviewEvents(self, eventdata, stanza, attrs):
         filename = None
@@ -346,44 +271,4 @@ class PreviewController(controllers.BaseController):
             return events
         finally:
             if filename:
-                os.unlink(filename)
-
-        # jobid = server
-        # results = splunk.entity.getEntities('search/jobs/%s/results_preview' % jobid, sessionKey=self._sessionKey, namespace=self._mynamespace, owner=self._owner)
-
-    
-def unit_test():
-
-    cherrypy.tools.sessions.on = True    
-    class FakeSession(dict):
-        def __init__(self):
-            self.id = 5
-            self.sessionKey = splunk.auth.getSessionKey('admin', 'changeme')
-    cherrypy.session = FakeSession()
-    cherrypy.session['sessionKey'] = splunk.auth.getSessionKey('admin', 'changeme')
-    cherrypy.session['user'] = { 'name': 'admin' }
-    cherrypy.session['id'] = 12345
-    cherrypy.config['module_dir'] = '/'
-    cherrypy.config['build_number'] = '123'
-    cherrypy.request.lang = 'en-US'
-    # roflcon
-    class elvis:
-        def ugettext(self, msg):
-            return msg
-    cherrypy.request.t = elvis()
-    # END roflcon
-
-    previewer = PreviewController()
-
-    argc = len(sys.argv)
-    if argc == 2:
-        datafile = sys.argv[1]
-        with open(datafile,"r") as f:
-            text = f.read()
-            out = previewer.index(data=text, stanza='acr')
-        print out
-    else:
-        print 'Usage: %s datafile' % sys.argv[0]
-
-if __name__ == '__main__':
-    unit_test()
+                os.unlink(filename)            

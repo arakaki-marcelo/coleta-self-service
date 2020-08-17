@@ -1,0 +1,159 @@
+
+/* dialog */
+
+.myDialog { 
+   background:white;
+   font-size:12px;
+   color:#111; /*#E5F2F5;*/
+   border-style:solid;
+   border-spacing:0;
+   text-align:left;
+   font-family:Arial,Helvetica,sans-serif;
+}
+
+.myDialog label {
+   font-size:11px;
+   font-weight:bold;
+}
+.myDialog td {
+    color:#111;
+    font-size:11px;
+}
+
+.myDialog code {
+   font-weight:bold;
+   font-family:Courier New,monospace;
+   color:#1A7996
+}
+
+.myDialog .mybutton:hover {
+   background:#CCC;
+}
+
+
+
+.extractionName {
+    font-size:14px;
+}
+
+.tooltip {
+    display:none;
+    /* background:#CCC; */
+    /* left-margin: 100; */
+    font-size:11px;
+    padding:5px;
+    color:#111;
+
+    max-width:300px;
+    max-height:400px;
+    overflow:auto;
+
+    -moz-border-radius:5px 5px 5px 5px;
+    -moz-box-shadow:0 0 5px #DDDDDD;
+    background: #E5F2F5;
+    border:1px solid #CCCCCC;
+    margin-bottom:10px;
+    padding:15px;
+    border-color:#AAA;
+}
+
+.tooltip label {
+   font-size:11px;
+   font-weight:bold;
+}
+
+label {
+   color:#0A4;
+   font-size:11px;
+   font-weight:bold;
+}
+
+.eventList {
+    max-height:300px;
+    overflow:auto;
+    border: 2px solid grey;
+    padding: 2px;
+}
+
+.xout {
+  background: url('/static/img/skins/default/icon_circle_delete.png');
+}
+
+.event {
+  list-style-type: none;
+  #text-indent: -1em;
+  padding-left:0em;
+  padding: 0px;
+  margin: 0px; 
+}
+				   
+.event:hover {
+   background-color:#CCCCFF;
+}
+
+.highlight:hover { 
+   /* background-color: #FFED89;  */
+}
+
+.otherfieldsList {
+  list-style-type: none;
+  list-style-image: none;
+}
+.ruleList {
+  list-style-type: none;
+}
+
+.smalltooltip {
+  padding:5px;
+  background-color: #FFED89;
+}
+  
+.rule:hover {
+   background-color:#CCCCFF;
+}
+
+/* same as splunk h1 but without wrapping before and after */
+.myh1 {
+   color:#73A550;
+   font-size:18px;
+   font-weight:normal;
+   margin:0;
+   border-color:#CCCCCC;
+   font-family:Arial,Helvetica,sans-serif;
+}
+
+.previewset { 
+	border-style: solid; 
+	border-color: #73A550; 
+	border-width: 1px; 
+	margin: 5px; 
+	padding: 2px
+}
+
+#overlay { 
+	 position:absolute; 
+	 display:none; 
+	 top:0; 
+	 bottom:0; 
+	 left:0; 
+	 right:0; 
+	 background-color: #fff; 
+	 opacity: 0.8; 
+	 -moz-opacity: 0.8; 
+	 filter: alpha(opacity=70);
+}
+
+#loader  { 
+	 position:absolute; 
+	 left:50%; 
+	 top:50%;
+}
+
+
+
+
+
+
+#advanced_restrictions { display: none }
+#advanced_toggle { font-size: 14px; color:#73A550; }
+//.helpmark { font-size: 18px; color:#73A550; }
